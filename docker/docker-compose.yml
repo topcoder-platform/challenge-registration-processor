@@ -1,0 +1,10 @@
+version: '3'
+services:
+  challenge-registration-processor-es:
+    image: challenge-registration-processor-es:latest
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    env_file:
+      - api.env
+    network_mode: "host"

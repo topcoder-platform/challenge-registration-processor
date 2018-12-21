@@ -1,0 +1,31 @@
+{
+  "name": "challenge-registration-processor-es",
+  "version": "1.0.0",
+  "description": "Topcoder Challenge Resource Processor",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix"
+  },
+  "author": "TCSCODER",
+  "license": "none",
+  "devDependencies": {
+    "standard": "^11.0.1"
+  },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "bluebird": "^3.5.1",
+    "co": "^4.6.0",
+    "config": "^1.21.0",
+    "get-parameter-names": "^0.3.0",
+    "joi": "^9.0.4",
+    "lodash": "^4.17.10",
+    "no-kafka": "^3.2.4",
+    "topcoder-healthcheck-dropin": "^1.0.2",
+    "winston": "^2.2.0"
+  },
+  "engines": {
+    "node": "8.x"
+  }
+}
