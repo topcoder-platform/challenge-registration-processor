@@ -5,69 +5,71 @@
 global.Promise = require('bluebird')
 const _ = require('lodash')
 const config = require('config')
-const logger = require('./common/logger')
-const Kafka = require('no-kafka')
-const co = require('co')
-const ProcessorService = require('./services/ProcessorService')
 const healthcheck = require('topcoder-healthcheck-dropin')
+const Kafka = require('no-kafka')
+const logger = require('./common/logger')
+const { getKafkaOptions } = require('./common/utils')
+const processorService = require('./services/ProcessorService')
 
 // create consumer
-const options = { connectionString: config.KAFKA_URL, handlerConcurrency: 1 }
-if (config.KAFKA_CLIENT_CERT && config.KAFKA_CLIENT_CERT_KEY) {
-  options.ssl = { cert: config.KAFKA_CLIENT_CERT, key: config.KAFKA_CLIENT_CERT_KEY }
-}
-const consumer = new Kafka.SimpleConsumer(options)
+const consumer = new Kafka.GroupConsumer(getKafkaOptions())
 
 // data handler
-const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, (m) => {
-  const message = m.message.value.toString('utf8')
-  logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${
-    m.offset}; Message: ${message}.`)
-  let messageJSON
-  try {
-    messageJSON = JSON.parse(message)
-  } catch (e) {
-    logger.error('Invalid message JSON.')
-    logger.error(e)
-    // ignore the message
-    return
-  }
-  if (messageJSON.topic !== topic) {
-    logger.error(`The message topic ${messageJSON.topic} doesn't match the Kafka topic ${topic}.`)
-    // ignore the message
-    return
-  }
-  const type = _.get(messageJSON, 'payload.type')
-  if (!type) {
-    logger.error('The message misses payload.type')
-    // ignore the message
-    return
-  }
-  return co(function * () {
-    switch (type) {
-      case 'ADD_RESOURCE':
-        yield ProcessorService.addResource(messageJSON)
-        break
-      case 'REMOVE_RESOURCE':
-        yield ProcessorService.removeResource(messageJSON)
-        break
-      case 'USER_REGISTRATION':
-        yield ProcessorService.registerUser(messageJSON)
-        break
-      case 'USER_UNREGISTRATION':
-        yield ProcessorService.unregisterUser(messageJSON)
-        break
-      default:
-        throw new Error(`Invalid payload type: ${type}`)
+const dataHandler = async (messageSet, topic, partition) => {
+  await Promise.each(messageSet, async (m) => {
+    const message = m.message.value.toString('utf8')
+    logger.info(`Handle Kafka event message; Topic: ${topic}; Partition: ${partition}; Offset: ${m.offset}; Message: ${message}.`)
+    let messageJSON
+    try {
+      messageJSON = JSON.parse(message)
+    } catch (e) {
+      logger.error('Invalid message JSON.')
+      logger.logFullError(e)
+      // commit the message and ignore it
+      consumer.commitOffset({ topic, partition, offset: m.offset })
+      return
+    }
+    if (messageJSON.topic !== topic) {
+      logger.error(`The message topic ${messageJSON.topic} doesn't match the Kafka topic ${topic}.`)
+      // commit the message and ignore it
+      consumer.commitOffset({ topic, partition, offset: m.offset })
+      return
+    }
+    const type = _.get(messageJSON, 'payload.type')
+    if (!type) {
+      logger.error('The message misses payload.type')
+      // commit the message and ignore it
+      consumer.commitOffset({ topic, partition, offset: m.offset })
+      return
+    }
+    try { // attempt to process the message
+      switch (type) {
+        case 'ADD_RESOURCE':
+          await processorService.addResource(messageJSON)
+          break
+        case 'REMOVE_RESOURCE':
+          await processorService.removeResource(messageJSON)
+          break
+        case 'USER_REGISTRATION':
+          await processorService.registerUser(messageJSON)
+          break
+        case 'USER_UNREGISTRATION':
+          await processorService.unregisterUser(messageJSON)
+          break
+        default:
+          throw new Error(`Invalid payload type: ${type}`)
+      }
+    } catch (err) {
+      logger.logFullError(err)
+    } finally {
+      // Commit offset regardless of error
+      consumer.commitOffset({ topic, partition, offset: m.offset })
     }
   })
-    // commit offset
-    .then(() => consumer.commitOffset({ topic, partition, offset: m.offset }))
-    .catch((err) => logger.error(err))
-})
+}
 
 // check if there is kafka connection alive
-function check () {
+const check = () => {
   if (!consumer.client.initialBrokers && !consumer.client.initialBrokers.length) {
     return false
   }
@@ -79,13 +81,19 @@ function check () {
   return connected
 }
 
+// consume configured topics and setup healthcheck endpoint
 consumer
-  .init()
-  // consume configured topics
+  .init([{
+    subscriptions: [config.RESOURCE_TOPIC, config.REGISTRATION_TOPIC],
+    handler: dataHandler
+  }])
   .then(() => {
     healthcheck.init([check])
+    logger.debug('Consumer initialized successfully')
+  }).catch(logger.logFullError)
 
-    const topics = [config.RESOURCE_TOPIC, config.REGISTRATION_TOPIC]
-    _.each(topics, (tp) => consumer.subscribe(tp, { time: Kafka.LATEST_OFFSET }, dataHandler))
-  })
-  .catch((err) => logger.error(err))
+if (process.env.NODE_ENV === 'test') {
+  module.exports = {
+    consumer
+  }
+}

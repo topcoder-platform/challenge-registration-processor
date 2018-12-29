@@ -11,9 +11,9 @@ const axios = require('axios')
  * Update challenge details in Elasticsearch
  * @param {Number} challengeId the challenge id
  */
-function * updateChallengeES (challengeId) {
+async function updateChallengeES (challengeId) {
   // update challenge details in ES by calling ES feeder service
-  const result = yield axios.put(config.UPDATE_ES_CHALLENGE_DETAILS_URL, { param: { challengeIds: [challengeId] } })
+  const result = await axios.put(config.UPDATE_ES_CHALLENGE_DETAILS_URL, { param: { challengeIds: [challengeId] } }, { validateStatus: () => true })
   const status = _.get(result.data || {}, 'result.status')
   if (!status || status < 200 || status >= 300) {
     logger.error(JSON.stringify(result.data, null, 4))
@@ -26,9 +26,9 @@ function * updateChallengeES (challengeId) {
  * Handle Kafka message of 'add resource'.
  * @param {Object} message the message
  */
-function * addResource (message) {
+async function addResource (message) {
   // update challenge details in ES
-  yield updateChallengeES(message.payload.data.challengeId)
+  await updateChallengeES(message.payload.data.challengeId)
 }
 
 addResource.schema = {
@@ -59,9 +59,9 @@ addResource.schema = {
  * Handle Kafka message of 'remove resource'.
  * @param {Object} message the message
  */
-function * removeResource (message) {
+async function removeResource (message) {
   // update challenge details in ES
-  yield updateChallengeES(message.payload.data.challengeId)
+  await updateChallengeES(message.payload.data.challengeId)
 }
 
 removeResource.schema = {
@@ -88,9 +88,9 @@ removeResource.schema = {
  * Handle Kafka message of 'user registration'.
  * @param {Object} message the message
  */
-function * registerUser (message) {
+async function registerUser (message) {
   // update challenge details in ES
-  yield updateChallengeES(message.payload.data.challengeId)
+  await updateChallengeES(message.payload.data.challengeId)
 }
 
 registerUser.schema = {
@@ -113,9 +113,9 @@ registerUser.schema = {
  * Handle Kafka message of 'user unregistration'.
  * @param {Object} message the message
  */
-function * unregisterUser (message) {
+async function unregisterUser (message) {
   // update challenge details in ES
-  yield updateChallengeES(message.payload.detail.challengeId)
+  await updateChallengeES(message.payload.detail.challengeId)
 }
 
 unregisterUser.schema = {

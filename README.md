@@ -14,6 +14,7 @@ The following parameters can be set in config files or in env variables:
 - DISABLE_LOGGING: whether to disable logging, default is false
 - LOG_LEVEL: the log level; default value: 'debug'
 - KAFKA_URL: comma separated Kafka hosts; default value: 'localhost:9092'
+- KAFKA_GROUP_ID: consumer group id; default value: 'tc-challenge-registration-processor-group'
 - KAFKA_CLIENT_CERT: Kafka connection certificate, optional; default value is undefined;
     if not provided, then SSL connection is not used, direct insecure connection is used;
     if provided, it can be either path to certificate file or certificate content
@@ -26,6 +27,11 @@ The following parameters can be set in config files or in env variables:
 
 Also note that there is a `/health` endpoint that checks for the health of the app. This sets up an expressjs server and listens on the environment variable `PORT`. It's not part of the configuration file and needs to be passed as an environment variable
 
+Configuration for the tests is at `config/test.js`. Following parameters need to be set via environment variables or directly in config file
+
+- TEST_KAFKA_URL: Kafka URL pointing to Kafka test instance
+- TEST_UPDATE_ES_CHALLENGE_DETAILS_URL: ES Feeder API URL to be used for testing
+- WAIT_TIME: wait time used in test, default is 1000 or one second
 
 ## Local Kafka setup
 
@@ -46,13 +52,11 @@ Also note that there is a `/health` endpoint that checks for the health of the a
   `bin/kafka-topics.sh --list --zookeeper localhost:2181`,
   it should list out the created topics
 
-
 ## Local deployment
 
 - install dependencies `npm i`
 - run code lint check `npm run lint`, running `npm run lint:fix` can fix some lint errors if any
 - start processor app `npm start`
-
 
 ## Local Deployment with Docker
 
@@ -73,10 +77,37 @@ docker-compose up
 5. When you are running the application for the first time, It will take some time initially to download the image and install the dependencies
 
 
+#### Running unit tests and coverage
+
+To run unit tests alone
+
+```
+npm run test
+```
+
+To run unit tests with coverage report, you can check generated coverage report in coverage folder and coverage for `src/services/ProcessorService.js` is 100%.
+
+```
+npm run cov
+```
+
+#### Running integration tests and coverage
+
+To run integration tests alone
+
+```
+npm run e2e
+```
+
+To run integration tests with coverage report, please note e2e tests will run with real api so e2e tests will not cover some error cases but most cases are modified from unit tests
+
+```
+npm run cov-e2e
+```
+
 ## Notes
 
 - when there is Kafka message of add resource/remove resource/user registration/user unregistration,
   the processor will call `PUT /v4/esfeeder/challenges` to update related challenge details in Elasticsearch,
   related code repository: `https://github.com/topcoder-platform/tc-elasticsearch-feeder-service`,
   related code: `https://github.com/topcoder-platform/tc-elasticsearch-feeder-service/blob/279700b3e70c33c558945aea1239ffcc0270870c/src/main/java/com/appirio/service/challengefeeder/manager/ChallengeDetailFeederManager.java#L95`
-
