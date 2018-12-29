@@ -43,3 +43,11 @@ info: Successfully updated challenge details of id 30075466 in Elasticsearch.
   `[ { - a b c`
 - then in the app console, you will see error messages
 
+
+
+# Topcoder - Challenge registration processor updates Verification
+- UNIT TESTS see [README.md](./README.md) about how to run unit test and run unit test with coverage report.
+
+- BUG FIX
+Change to use async/await instead of co, update version of `no-kafka` to latest version in `package.json` to solve this issue.
+Make processor up, make sure it could process messages successfully, then make processor down, still send messages, later make processor up again and you will see processor could still process messages sent during processor is down.

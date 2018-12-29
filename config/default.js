@@ -7,6 +7,8 @@ module.exports = {
   LOG_LEVEL: process.env.LOG_LEVEL || 'debug',
 
   KAFKA_URL: process.env.KAFKA_URL || 'localhost:9092',
+
+  KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'tc-challenge-registration-processor-group',
   // below are used for secure Kafka connection, they are optional
   // for the local Kafka, they are not needed
   KAFKA_CLIENT_CERT: process.env.KAFKA_CLIENT_CERT,
@@ -16,5 +18,5 @@ module.exports = {
   REGISTRATION_TOPIC: process.env.REGISTRATION_TOPIC || 'notifications.kafka.queue.java.test',
 
   UPDATE_ES_CHALLENGE_DETAILS_URL: process.env.UPDATE_ES_CHALLENGE_DETAILS_URL ||
-    'https://api.topcoder.com/v4/esfeeder/challenges'
+    'https://api.topcoder-dev.com/v4/esfeeder/challenges'
 }
