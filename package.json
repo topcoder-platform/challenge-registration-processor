@@ -24,7 +24,7 @@
     "standard": "^11.0.1"
   },
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.23.0",
     "bluebird": "^3.5.1",
     "config": "^3.0.1",
     "get-parameter-names": "^0.3.0",
